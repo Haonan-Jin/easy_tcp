@@ -24,7 +24,7 @@ func (h *stringHandler) Handle(conn net.Conn, msg interface{}) {
 	defer h.mutex.Unlock()
 
 	h.times++
-	fmt.Println(msg)
+	fmt.Println(h.times)
 }
 
 func main() {
