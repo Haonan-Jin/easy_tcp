@@ -1,10 +1,8 @@
 package server
 
 import (
-	"fmt"
 	"log"
 	"net"
-	"sync"
 )
 
 type NetWorkServer interface {
@@ -15,6 +13,7 @@ type TcpServer struct {
 	NetWorkServer
 	listener *net.TCPListener
 	decoder  Decoder
+	encoder  Encoder
 	handler  Handler
 }
 
@@ -36,6 +35,9 @@ func (ts *TcpServer) AddDecoder(decoder Decoder) {
 func (ts *TcpServer) AddHandler(handler Handler) {
 	ts.handler = handler
 }
+func (ts *TcpServer) AddEncoder(encoder Encoder) {
+	ts.encoder = encoder
+}
 
 func listen(addr *net.TCPAddr) (*net.TCPListener, error) {
 	listener, e := net.ListenTCP("tcp", addr)
@@ -54,19 +56,6 @@ func (ts *TcpServer) Start() {
 			continue
 		}
 
-		go handleConnection(conn, ts.decoder, ts.handler)
+		go handleConnection(conn, ts.encoder, ts.decoder, ts.handler)
 	}
-}
-
-type s struct {
-	mutex sync.Mutex
-	times int
-}
-
-func (h *s) Handle(conn net.Conn, msg interface{}) {
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
-
-	h.times++
-	fmt.Println(h.times)
 }

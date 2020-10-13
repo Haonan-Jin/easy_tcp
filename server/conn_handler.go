@@ -1,41 +1,60 @@
 package server
 
 import (
+	"bytes"
+	"fmt"
 	"log"
 	"net"
+	"sync"
+	"time"
 )
 
-type connHandler struct {
-	conn    net.Conn
-	holder  *bytesHolder
+type ContextHandler struct {
+	mutex sync.Mutex
+
+	conn net.Conn
+
+	buffer  *bytes.Buffer
+	decoder Decoder
+
+	dataChan chan int
+	msgChan  chan interface{}
+
 	handler Handler
+	encoder Encoder
 }
 
-func handleConnection(conn net.Conn, decoder Decoder, handler Handler) {
-	connHandler := new(connHandler)
+func handleConnection(conn net.Conn, encoder Encoder, decoder Decoder, handler Handler) {
+	contextHandler := new(ContextHandler)
 
-	holder := newByteBuffer(decoder)
+	contextHandler.msgChan = make(chan interface{}, 100)
 
-	connHandler.handler = handler
-	connHandler.holder = holder
-	connHandler.conn = conn
+	contextHandler.dataChan = make(chan int, 100)
+	contextHandler.buffer = bytes.NewBuffer(nil)
+	contextHandler.handler = handler
+	contextHandler.conn = conn
+	contextHandler.decoder = decoder
+	contextHandler.encoder = encoder
 
-	connHandler.start()
+	// TODO open a goroutine to parseReadBytes read bytes
+
+	contextHandler.start()
 }
 
-func (ch *connHandler) start() {
+func (ch *ContextHandler) start() {
 	terminateChan := make(chan error, 1)
 	go ch.read(terminateChan)
+	go ch.parseReadBytes()
+	go ch.handleMsg()
 
 	select {
 	case err := <-terminateChan:
-		ch.holder.buffer.Reset()
 		log.Println(err)
 		return
 	}
 }
 
-func (ch *connHandler) read(terminateChan chan<- error) {
+func (ch *ContextHandler) read(terminateChan chan<- error) {
 
 	buffer := make([]byte, 1024)
 
@@ -48,12 +67,68 @@ func (ch *connHandler) read(terminateChan chan<- error) {
 			return
 		}
 
-		err = ch.holder.write(buffer[:n], ch.conn, ch.handler)
-		if err != nil {
-			log.Println(err)
-			continue
-		}
+		// read bytes to buffer only
 
+		ch.mutex.Lock()
+		ch.buffer.Write(buffer[:n])
+		ch.mutex.Unlock()
+
+		ch.dataChan <- 1
 	}
 
+}
+
+func (ch *ContextHandler) parseReadBytes() {
+	var timeoutChan <-chan time.Time
+loop:
+	for {
+		timeoutChan = time.After(time.Second * 30)
+		select {
+		case <-ch.dataChan:
+			for {
+				ch.mutex.Lock()
+				msg, e := ch.decoder.Decode(ch.buffer)
+
+				if e != nil {
+					if msg != nil {
+						ch.buffer = msg.(*bytes.Buffer)
+					}
+					ch.mutex.Unlock()
+					break
+				}
+
+				ch.mutex.Unlock()
+				ch.msgChan <- msg
+			}
+		case <-timeoutChan:
+			fmt.Println("parse loop timeout")
+			ch.buffer.Reset()
+			break loop
+		}
+	}
+}
+
+func (ch *ContextHandler) handleMsg() {
+	var timeoutChan <-chan time.Time
+loop:
+	for {
+		timeoutChan = time.After(time.Second * 30)
+		select {
+		case msg := <-ch.msgChan:
+			ch.handler.Handle(ch, msg)
+		case <-timeoutChan:
+			fmt.Println("handle msg loop timeout")
+			break loop
+		}
+	}
+}
+
+func (ch *ContextHandler) Write(msg interface{}) {
+	// todo need a encoder to encode the input data
+	encode := ch.encoder.Encode(msg)
+	_, err := ch.conn.Write(encode)
+	if err != nil {
+		_ = ch.conn.Close()
+		fmt.Println(err)
+	}
 }

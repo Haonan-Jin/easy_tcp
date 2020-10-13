@@ -9,6 +9,19 @@ import (
 	"testing"
 )
 
+func TestSelect(t *testing.T) {
+	ints := make(chan int, 1)
+
+	go func() {
+		ints <- 1
+	}()
+
+	select {
+	case s := <-ints:
+		fmt.Println(s)
+	}
+}
+
 func TestClient(t *testing.T) {
 	content := []byte("啊")
 	counter := 0
@@ -23,6 +36,17 @@ func TestClient(t *testing.T) {
 			if e != nil {
 				panic(e)
 			}
+
+			go func() {
+				bff := make([]byte, 1024)
+				for {
+					i, err := conn.Read(bff)
+					if err != nil {
+						continue
+					}
+					fmt.Println(bff[:i])
+				}
+			}()
 
 			for i := 0; i < 1000; i++ {
 				header := make([]byte, 4)

@@ -1,7 +1,5 @@
 package server
 
-import "net"
-
 type Handler interface {
-	Handle(conn net.Conn, msg interface{})
+	Handle(conn *ContextHandler, msg interface{})
 }
