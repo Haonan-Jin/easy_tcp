@@ -36,8 +36,6 @@ func handleConnection(conn net.Conn, encoder Encoder, decoder Decoder, handler H
 	contextHandler.decoder = decoder
 	contextHandler.encoder = encoder
 
-	// TODO open a goroutine to parseReadBytes read bytes
-
 	contextHandler.start()
 }
 
