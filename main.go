@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
+	"github.com/Haonan-Jin/tcp_server/server"
 	"net"
 	"sync"
-	"tcp_server/server"
 )
 
 // decode you data in this func
