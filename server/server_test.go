@@ -7,7 +7,28 @@ import (
 	"math/rand"
 	"net"
 	"testing"
+	"time"
 )
+
+func TestWG(t *testing.T) {
+}
+
+func TestMultiSelect(t *testing.T) {
+	ints1 := make(chan int, 1)
+	timer := time.NewTimer(time.Second * 2)
+
+	go func() {
+		ints1 <- 1
+		timer.Stop()
+	}()
+
+	select {
+	case <-ints1:
+		fmt.Println(1)
+	case <-timer.C:
+		fmt.Println(2)
+	}
+}
 
 func TestSelect(t *testing.T) {
 	ints := make(chan int, 1)

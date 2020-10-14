@@ -1,3 +1,3 @@
-module tcp_handler
+module tcp_server
 
 go 1.13

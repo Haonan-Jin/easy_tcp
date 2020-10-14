@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
-	"tcp_handler/server"
+	"tcp_server/server"
 )
 
 func Decode(b []byte) (interface{}, error) {
@@ -15,12 +15,12 @@ func Encode(msg interface{}) []byte {
 	return []byte(msg.(string))
 }
 
-type THandler struct {
+type StringHandler struct {
 	mutex sync.Mutex
 	times int
 }
 
-func (t *THandler) Handle(ctx *server.ContextHandler, msg interface{}) {
+func (t *StringHandler) Handle(ctx *server.ContextHandler, msg interface{}) {
 	t.mutex.Lock()
 	t.times++
 	fmt.Println(t.times)
@@ -40,6 +40,6 @@ func main() {
 
 	tcpServer.AddEncoder(Encode)
 	tcpServer.AddDecoder(Decode)
-	tcpServer.AddHandler(new(THandler))
+	tcpServer.AddHandler(new(StringHandler))
 	tcpServer.Start()
 }

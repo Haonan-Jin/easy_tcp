@@ -5,10 +5,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"sync"
-	"time"
 )
 
 type ContextHandler struct {
@@ -20,7 +18,6 @@ type ContextHandler struct {
 	decoder Decoder
 
 	dataChan chan int
-	msgChan  chan interface{}
 
 	handler Handler
 	encoder Encoder
@@ -28,8 +25,6 @@ type ContextHandler struct {
 
 func handleConnection(conn net.Conn, encoder Encoder, decoder Decoder, handler Handler) {
 	contextHandler := new(ContextHandler)
-
-	contextHandler.msgChan = make(chan interface{}, 100)
 
 	contextHandler.dataChan = make(chan int, 100)
 	contextHandler.buffer = bytes.NewBuffer(nil)
@@ -44,12 +39,9 @@ func handleConnection(conn net.Conn, encoder Encoder, decoder Decoder, handler H
 func (ch *ContextHandler) start() {
 	terminateChan := make(chan error, 1)
 	go ch.read(terminateChan)
-	go ch.parseReadBytes()
-	go ch.handleMsg()
 
 	select {
-	case err := <-terminateChan:
-		log.Println(err)
+	case <-terminateChan:
 		return
 	}
 }
@@ -73,54 +65,34 @@ func (ch *ContextHandler) read(terminateChan chan<- error) {
 		ch.buffer.Write(buffer[:n])
 		ch.mutex.Unlock()
 
-		ch.dataChan <- 1
+		ch.parseReadBytes()
 	}
 
 }
 
 func (ch *ContextHandler) parseReadBytes() {
-	var timeoutChan *time.Timer
-loop:
 	for {
-		timeoutChan = time.NewTimer(time.Second * 10)
-		select {
-		case <-ch.dataChan:
-			for {
-				ch.mutex.Lock()
-				msg, e := unpack(ch.buffer)
+		ch.mutex.Lock()
+		msg, e := unpack(ch.buffer)
 
-				if e != nil {
-					if msg != nil {
-						ch.buffer = bytes.NewBuffer(msg)
-					}
-					timeoutChan.Stop()
-					ch.mutex.Unlock()
-					break
-				}
-
-				decoded, e := ch.decoder(msg)
-				ch.mutex.Unlock()
-				ch.msgChan <- decoded
+		if e != nil {
+			if msg != nil {
+				ch.buffer = bytes.NewBuffer(msg)
 			}
-		case <-timeoutChan.C:
-			ch.buffer.Reset()
-			break loop
+			ch.mutex.Unlock()
+			break
 		}
-	}
-}
 
-func (ch *ContextHandler) handleMsg() {
-	var timeoutChan *time.Timer
-loop:
-	for {
-		timeoutChan = time.NewTimer(time.Second * 10)
-		select {
-		case msg := <-ch.msgChan:
-			timeoutChan.Stop()
-			ch.handler.Handle(ch, msg)
-		case <-timeoutChan.C:
-			break loop
+		decoded, e := ch.decoder(msg)
+		if e != nil {
+			// failed to decode drop this msg.
+			ch.mutex.Unlock()
+			break
 		}
+
+		ch.mutex.Unlock()
+
+		ch.handler.Handle(ch, decoded)
 	}
 }
 
