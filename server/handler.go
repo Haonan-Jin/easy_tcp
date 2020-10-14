@@ -1,3 +1,5 @@
 package server
 
-type Handler func(conn *ContextHandler, msg interface{})
+type Handler interface {
+	Handle(ctx *ContextHandler, msg interface{})
+}

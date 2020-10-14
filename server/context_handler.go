@@ -2,7 +2,9 @@ package server
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"sync"
@@ -85,19 +87,20 @@ loop:
 		case <-ch.dataChan:
 			for {
 				ch.mutex.Lock()
-				msg, e := ch.decoder.Decode(ch.buffer)
+				msg, e := unpack(ch.buffer)
 
 				if e != nil {
 					if msg != nil {
-						ch.buffer = msg.(*bytes.Buffer)
+						ch.buffer = bytes.NewBuffer(msg)
 					}
 					timeoutChan.Stop()
 					ch.mutex.Unlock()
 					break
 				}
 
+				decoded, e := ch.decoder(msg)
 				ch.mutex.Unlock()
-				ch.msgChan <- msg
+				ch.msgChan <- decoded
 			}
 		case <-timeoutChan.C:
 			ch.buffer.Reset()
@@ -114,7 +117,7 @@ loop:
 		select {
 		case msg := <-ch.msgChan:
 			timeoutChan.Stop()
-			ch.handler(ch, msg)
+			ch.handler.Handle(ch, msg)
 		case <-timeoutChan.C:
 			break loop
 		}
@@ -122,10 +125,39 @@ loop:
 }
 
 func (ch *ContextHandler) Write(msg interface{}) {
-	encode := ch.encoder.Encode(msg)
+	encode := ch.encoder(msg)
 	_, err := ch.conn.Write(encode)
 	if err != nil {
 		_ = ch.conn.Close()
 		fmt.Println(err)
 	}
+}
+
+func unpack(b *bytes.Buffer) ([]byte, error) {
+	if b.Len() < 4 {
+		return nil, io.ErrShortBuffer
+	}
+
+	header := make([]byte, 4)
+	_, err := b.Read(header)
+	if err != nil {
+		return nil, err
+	}
+
+	bodyLen := int(binary.BigEndian.Uint32(header))
+
+	if b.Len() < bodyLen {
+		recent := bytes.NewBuffer(nil)
+		recent.Write(header)
+		recent.Write(b.Bytes())
+		return recent.Bytes(), io.ErrShortBuffer
+	}
+
+	body := make([]byte, bodyLen)
+	n, err := b.Read(body)
+	if err != nil {
+		return nil, err
+	}
+
+	return body[:n], nil
 }
