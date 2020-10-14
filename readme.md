@@ -2,6 +2,10 @@
 
 Create this project for creating a tcp server faster and process bytes easier.
 
+### Install:
+```shell script
+go get -u github.com/firstrow/tcp_server
+```
 
 ### Usage:
 ``` go
