@@ -82,7 +82,7 @@ func (ch *ContextHandler) parseReadBytes() {
 	var timeoutChan *time.Timer
 loop:
 	for {
-		timeoutChan = time.NewTimer(time.Second * 30)
+		timeoutChan = time.NewTimer(time.Second * 10)
 		select {
 		case <-ch.dataChan:
 			for {
@@ -113,7 +113,7 @@ func (ch *ContextHandler) handleMsg() {
 	var timeoutChan *time.Timer
 loop:
 	for {
-		timeoutChan = time.NewTimer(time.Second * 30)
+		timeoutChan = time.NewTimer(time.Second * 10)
 		select {
 		case msg := <-ch.msgChan:
 			timeoutChan.Stop()
