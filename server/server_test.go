@@ -44,7 +44,7 @@ func TestSelect(t *testing.T) {
 }
 
 func TestClient(t *testing.T) {
-	content := []byte("啊")
+	content := []byte("a")
 	counter := 0
 
 	for j := 0; j < 1000; j++ {

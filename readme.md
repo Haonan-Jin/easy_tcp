@@ -1,3 +1,10 @@
+# tcp_server
+
+Create this project for creating a tcp server faster and process bytes easier.
+
+
+### Usage:
+``` go
 package main
 
 import (
@@ -7,7 +14,6 @@ import (
 	"tcp_server/server"
 )
 
-// decode you data in this func
 func Decode(b []byte) (interface{}, error) {
 	return string(b), nil
 }
@@ -44,3 +50,5 @@ func main() {
 	tcpServer.AddHandler(new(StringHandler))
 	tcpServer.Start()
 }
+
+```
