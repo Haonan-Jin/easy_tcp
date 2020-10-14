@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"sync"
 	"tcp_handler/server"
 )
 
@@ -56,18 +55,8 @@ func (se StringEncoder) Encode(msg interface{}) []byte {
 	return []byte(msg.(string))
 }
 
-type stringHandler struct {
-	mutex sync.Mutex
-	times int
-}
-
-func (h *stringHandler) Handle(ctx *server.ContextHandler, msg interface{}) {
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
-	h.times++
-
-	//ctx.Write("asd")
-	fmt.Println(h.times)
+func Handle(ctx *server.ContextHandler, msg interface{}) {
+	fmt.Println(msg)
 }
 
 func main() {
@@ -83,6 +72,6 @@ func main() {
 
 	tcpServer.AddEncoder(new(StringEncoder))
 	tcpServer.AddDecoder(NewLengthFixedDecoder(4))
-	tcpServer.AddHandler(new(stringHandler))
+	tcpServer.AddHandler(Handle)
 	tcpServer.Start()
 }

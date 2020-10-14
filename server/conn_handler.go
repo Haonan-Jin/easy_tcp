@@ -116,7 +116,7 @@ loop:
 		select {
 		case msg := <-ch.msgChan:
 			timeoutChan.Stop()
-			ch.handler.Handle(ch, msg)
+			ch.handler(ch, msg)
 		case <-timeoutChan.C:
 			break loop
 		}
@@ -124,7 +124,6 @@ loop:
 }
 
 func (ch *ContextHandler) Write(msg interface{}) {
-	// todo need a encoder to encode the input data
 	encode := ch.encoder.Encode(msg)
 	_, err := ch.conn.Write(encode)
 	if err != nil {
