@@ -14,6 +14,7 @@ import (
 	"tcp_server/server"
 )
 
+// decode you data in this func
 func Decode(b []byte) (interface{}, error) {
 	return string(b), nil
 }
@@ -27,6 +28,7 @@ type StringHandler struct {
 	times int
 }
 
+// process decoded message
 func (t *StringHandler) Handle(ctx *server.ContextHandler, msg interface{}) {
 	t.mutex.Lock()
 	t.times++

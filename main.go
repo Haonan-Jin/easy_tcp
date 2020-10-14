@@ -21,6 +21,7 @@ type StringHandler struct {
 	times int
 }
 
+// process decoded message
 func (t *StringHandler) Handle(ctx *server.ContextHandler, msg interface{}) {
 	t.mutex.Lock()
 	t.times++
