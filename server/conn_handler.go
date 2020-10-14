@@ -79,10 +79,10 @@ func (ch *ContextHandler) read(terminateChan chan<- error) {
 }
 
 func (ch *ContextHandler) parseReadBytes() {
-	var timeoutChan <-chan time.Time
+	var timeoutChan *time.Timer
 loop:
 	for {
-		timeoutChan = time.After(time.Second * 30)
+		timeoutChan = time.NewTimer(time.Second * 30)
 		select {
 		case <-ch.dataChan:
 			for {
@@ -93,6 +93,7 @@ loop:
 					if msg != nil {
 						ch.buffer = msg.(*bytes.Buffer)
 					}
+					timeoutChan.Stop()
 					ch.mutex.Unlock()
 					break
 				}
@@ -100,8 +101,7 @@ loop:
 				ch.mutex.Unlock()
 				ch.msgChan <- msg
 			}
-		case <-timeoutChan:
-			fmt.Println("parse loop timeout")
+		case <-timeoutChan.C:
 			ch.buffer.Reset()
 			break loop
 		}
@@ -109,15 +109,15 @@ loop:
 }
 
 func (ch *ContextHandler) handleMsg() {
-	var timeoutChan <-chan time.Time
+	var timeoutChan *time.Timer
 loop:
 	for {
-		timeoutChan = time.After(time.Second * 30)
+		timeoutChan = time.NewTimer(time.Second * 30)
 		select {
 		case msg := <-ch.msgChan:
+			timeoutChan.Stop()
 			ch.handler.Handle(ch, msg)
-		case <-timeoutChan:
-			fmt.Println("handle msg loop timeout")
+		case <-timeoutChan.C:
 			break loop
 		}
 	}
