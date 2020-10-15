@@ -1,6 +1,8 @@
 package server
 
 import (
+	"github.com/Haonan-Jin/tcp_server/codec"
+	"github.com/Haonan-Jin/tcp_server/handler"
 	"log"
 	"net"
 )
@@ -12,9 +14,9 @@ type NetWorkServer interface {
 type TcpServer struct {
 	NetWorkServer
 	listener *net.TCPListener
-	decoder  Decoder
-	encoder  Encoder
-	handler  Handler
+	decoder  codec.Decoder
+	encoder  codec.Encoder
+	handler  handler.Handler
 }
 
 func NewTcpServer(addr *net.TCPAddr) (*TcpServer, error) {
@@ -28,15 +30,16 @@ func NewTcpServer(addr *net.TCPAddr) (*TcpServer, error) {
 	return server, nil
 }
 
-func (ts *TcpServer) AddDecoder(decoder Decoder) {
+func (ts *TcpServer) AddDecoder(decoder codec.Decoder) {
 	ts.decoder = decoder
 }
 
-func (ts *TcpServer) AddHandler(handler Handler) {
-	ts.handler = handler
-}
-func (ts *TcpServer) AddEncoder(encoder Encoder) {
+func (ts *TcpServer) AddEncoder(encoder codec.Encoder) {
 	ts.encoder = encoder
+}
+
+func (ts *TcpServer) AddHandler(handler handler.Handler) {
+	ts.handler = handler
 }
 
 func listen(addr *net.TCPAddr) (*net.TCPListener, error) {

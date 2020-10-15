@@ -3,27 +3,28 @@ package server
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
-	"io"
+	"github.com/Haonan-Jin/tcp_server/codec"
+	"github.com/Haonan-Jin/tcp_server/handler"
 	"net"
 	"sync"
 )
 
 type ContextHandler struct {
+	handler.ContextHandler
 	mutex sync.Mutex
 
 	conn net.Conn
 
 	buffer  *bytes.Buffer
-	decoder Decoder
+	decoder codec.Decoder
 
 	dataChan chan int
 
-	handler Handler
-	encoder Encoder
+	handler handler.Handler
+	encoder codec.Encoder
 }
 
-func handleConnection(conn net.Conn, encoder Encoder, decoder Decoder, handler Handler) {
+func handleConnection(conn net.Conn, encoder codec.Encoder, decoder codec.Decoder, handler handler.Handler) {
 	contextHandler := new(ContextHandler)
 
 	contextHandler.dataChan = make(chan int, 100)
@@ -73,7 +74,7 @@ func (ch *ContextHandler) read(terminateChan chan<- error) {
 func (ch *ContextHandler) parseReadBytes() {
 	for {
 		ch.mutex.Lock()
-		msg, e := unpack(ch.buffer)
+		msg, e := handler.LengthFixedUnpack(ch.buffer)
 
 		if e != nil {
 			if msg != nil {
@@ -97,39 +98,17 @@ func (ch *ContextHandler) parseReadBytes() {
 }
 
 func (ch *ContextHandler) Write(msg interface{}) {
-	encode := ch.encoder(msg)
-	_, err := ch.conn.Write(encode)
-	if err != nil {
-		_ = ch.conn.Close()
-		fmt.Println(err)
-	}
+	encoded := ch.encoder(msg)
+
+	msgLen := make([]byte, 4)
+	binary.BigEndian.PutUint32(msgLen, uint32(len(encoded)))
+
+	buffer := bytes.NewBuffer(msgLen)
+	buffer.Write(encoded)
+
+	_, _ = ch.conn.Write(buffer.Bytes())
 }
 
-func unpack(b *bytes.Buffer) ([]byte, error) {
-	if b.Len() < 4 {
-		return nil, io.ErrShortBuffer
-	}
-
-	header := make([]byte, 4)
-	_, err := b.Read(header)
-	if err != nil {
-		return nil, err
-	}
-
-	bodyLen := int(binary.BigEndian.Uint32(header))
-
-	if b.Len() < bodyLen {
-		recent := bytes.NewBuffer(nil)
-		recent.Write(header)
-		recent.Write(b.Bytes())
-		return recent.Bytes(), io.ErrShortBuffer
-	}
-
-	body := make([]byte, bodyLen)
-	n, err := b.Read(body)
-	if err != nil {
-		return nil, err
-	}
-
-	return body[:n], nil
+func (ch *ContextHandler) Close() {
+	_ = ch.conn.Close()
 }

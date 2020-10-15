@@ -4,43 +4,54 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/Haonan-Jin/tcp_server/handler"
 	"math/rand"
 	"net"
+	"sync"
 	"testing"
-	"time"
 )
 
-func TestWG(t *testing.T) {
+// decode your data in this func
+func Decode(b []byte) (interface{}, error) {
+	return string(b), nil
 }
 
-func TestMultiSelect(t *testing.T) {
-	ints1 := make(chan int, 1)
-	timer := time.NewTimer(time.Second * 2)
-
-	go func() {
-		ints1 <- 1
-		timer.Stop()
-	}()
-
-	select {
-	case <-ints1:
-		fmt.Println(1)
-	case <-timer.C:
-		fmt.Println(2)
-	}
+// encode your data in this func
+func Encode(msg interface{}) []byte {
+	return []byte(msg.(string))
 }
 
-func TestSelect(t *testing.T) {
-	ints := make(chan int, 1)
+type StringHandler struct {
+	mutex sync.Mutex
+	times int
+}
 
-	go func() {
-		ints <- 1
-	}()
+// process decoded message
+func (t *StringHandler) Handle(ctx handler.ContextHandler, msg interface{}) {
+	t.mutex.Lock()
+	t.times++
+	t.mutex.Unlock()
 
-	select {
-	case s := <-ints:
-		fmt.Println(s)
+	ctx.Write("1")
+	fmt.Println(t.times)
+	fmt.Println("read from client: ", msg)
+}
+
+func TestServer(t *testing.T) {
+	addr := net.TCPAddr{
+		IP:   net.ParseIP("0.0.0.0"),
+		Port: 3333,
 	}
+
+	tcpServer, e := NewTcpServer(&addr)
+	if e != nil {
+		panic(e)
+	}
+
+	tcpServer.AddEncoder(Encode)
+	tcpServer.AddDecoder(Decode)
+	tcpServer.AddHandler(new(StringHandler))
+	tcpServer.Start()
 }
 
 func TestClient(t *testing.T) {
