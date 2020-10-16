@@ -1,3 +1,3 @@
-module github.com/Haonan-Jin/tcp_server
+module github.com/Haonan-Jin/easy_tcp
 
 go 1.13
