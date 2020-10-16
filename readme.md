@@ -4,7 +4,7 @@ Create this project for creating a tcp server/client faster and process bytes ea
 
 ### Install:
 ```shell script
-go get -u github.com/firstrow/easy_tcp
+go get -u github.com/nswdn/easy_tcp
 ```
 
 ### Usage:
