@@ -1,10 +1,10 @@
-package client
+package goland
 
 import (
 	"fmt"
-	"github.com/Haonan-Jin/tcp_server/handler"
 	"math/rand"
 	"net"
+	"sync"
 	"testing"
 )
 
@@ -15,15 +15,17 @@ func Encode(msg interface{}) []byte {
 	return []byte(msg.(string))
 }
 
-type Handler struct {
+type ClientHandler struct {
 	times int
 }
 
-func (h *Handler) Handle(ctx handler.ContextHandler, msg interface{}) {
+func (h *ClientHandler) Handle(ctx ConnectionHandler, msg interface{}) {
 	//fmt.Println("response from server: ", msg)
 	h.times++
 	fmt.Println(h.times)
+	fmt.Println(msg)
 	if h.times == 1000 {
+		wg.Done()
 		ctx.Close()
 	}
 }
@@ -34,9 +36,11 @@ var serverAddr = net.TCPAddr{
 	Port: 3333,
 }
 
-func TestMultiClient(t *testing.T) {
+var wg = sync.WaitGroup{}
 
+func TestMultiClient(t *testing.T) {
 	maxClient := 1000
+	wg.Add(maxClient)
 
 	for i := 0; i < maxClient; i++ {
 		go func() {
@@ -47,17 +51,22 @@ func TestMultiClient(t *testing.T) {
 
 			client.AddEncoder(Encode)
 			client.AddDecoder(Decode)
-			client.AddHandler(new(Handler))
+			client.AddHandler(new(ClientHandler))
 			client.Dial()
 
 			for j := 0; j < 1000; j++ {
-				client.Write(randomSentences[rand.Intn(len(randomSentences))])
+				_, e := client.Write(randomSentences[rand.Intn(len(randomSentences))])
+				if e != nil {
+					e := client.ReConnect()
+					if e != nil {
+						return
+					}
+				}
 			}
 		}()
 	}
 
-	select {}
-
+	wg.Wait()
 }
 
 func TestDial(t *testing.T) {
@@ -69,7 +78,7 @@ func TestDial(t *testing.T) {
 
 	client.AddEncoder(Encode)
 	client.AddDecoder(Decode)
-	client.AddHandler(new(Handler))
+	client.AddHandler(new(ClientHandler))
 
 	client.Dial()
 

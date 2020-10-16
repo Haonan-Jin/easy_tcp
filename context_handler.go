@@ -1,30 +1,28 @@
-package server
+package goland
 
 import (
 	"bytes"
 	"encoding/binary"
-	"github.com/Haonan-Jin/tcp_server/codec"
-	"github.com/Haonan-Jin/tcp_server/handler"
 	"net"
 	"sync"
 )
 
 type ContextHandler struct {
-	handler.ContextHandler
+	ConnectionHandler
 	mutex sync.Mutex
 
 	conn net.Conn
 
 	buffer  *bytes.Buffer
-	decoder codec.Decoder
+	decoder Decoder
 
 	dataChan chan int
 
-	handler handler.Handler
-	encoder codec.Encoder
+	handler Handler
+	encoder Encoder
 }
 
-func handleConnection(conn net.Conn, encoder codec.Encoder, decoder codec.Decoder, handler handler.Handler) {
+func handleConnection(conn net.Conn, encoder Encoder, decoder Decoder, handler Handler) {
 	contextHandler := new(ContextHandler)
 
 	contextHandler.dataChan = make(chan int, 100)
@@ -74,7 +72,7 @@ func (ch *ContextHandler) read(terminateChan chan<- error) {
 func (ch *ContextHandler) parseReadBytes() {
 	for {
 		ch.mutex.Lock()
-		msg, e := handler.LengthFixedUnpack(ch.buffer)
+		msg, e := LengthFixedUnpack(ch.buffer)
 
 		if e != nil {
 			if msg != nil {
@@ -97,7 +95,7 @@ func (ch *ContextHandler) parseReadBytes() {
 	}
 }
 
-func (ch *ContextHandler) Write(msg interface{}) {
+func (ch *ContextHandler) Write(msg interface{}) (int, error) {
 	encoded := ch.encoder(msg)
 
 	msgLen := make([]byte, 4)
@@ -106,7 +104,7 @@ func (ch *ContextHandler) Write(msg interface{}) {
 	buffer := bytes.NewBuffer(msgLen)
 	buffer.Write(encoded)
 
-	_, _ = ch.conn.Write(buffer.Bytes())
+	return ch.conn.Write(buffer.Bytes())
 }
 
 func (ch *ContextHandler) Close() {

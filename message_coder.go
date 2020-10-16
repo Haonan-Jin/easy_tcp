@@ -1,4 +1,4 @@
-package codec
+package goland
 
 // encode your data in this func
 // you need only encode the message part

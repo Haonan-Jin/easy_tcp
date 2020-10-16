@@ -1,18 +1,16 @@
-package client
+package goland
 
 import (
 	"bytes"
 	"encoding/binary"
-	"github.com/Haonan-Jin/tcp_server/codec"
-	"github.com/Haonan-Jin/tcp_server/handler"
 	"net"
 )
 
 type TcpClient struct {
-	handler.ContextHandler
-	decoder codec.Decoder
-	encoder codec.Encoder
-	handler handler.Handler
+	ConnectionHandler
+	decoder Decoder
+	encoder Encoder
+	handler Handler
 	conn    *net.TCPConn
 	buffer  *bytes.Buffer
 }
@@ -30,15 +28,15 @@ func NewTcpClient(localAddr, targetAddr *net.TCPAddr) (*TcpClient, error) {
 	return client, nil
 }
 
-func (tc *TcpClient) AddDecoder(decoder codec.Decoder) {
+func (tc *TcpClient) AddDecoder(decoder Decoder) {
 	tc.decoder = decoder
 }
 
-func (tc *TcpClient) AddEncoder(encoder codec.Encoder) {
+func (tc *TcpClient) AddEncoder(encoder Encoder) {
 	tc.encoder = encoder
 }
 
-func (tc *TcpClient) AddHandler(handler handler.Handler) {
+func (tc *TcpClient) AddHandler(handler Handler) {
 	tc.handler = handler
 }
 
@@ -59,7 +57,7 @@ func (tc *TcpClient) Dial() {
 
 func (tc *TcpClient) parseReadBytes() {
 	for {
-		msg, e := handler.LengthFixedUnpack(tc.buffer)
+		msg, e := LengthFixedUnpack(tc.buffer)
 		if e != nil {
 			if msg != nil {
 				tc.buffer = bytes.NewBuffer(msg)
@@ -77,7 +75,7 @@ func (tc *TcpClient) parseReadBytes() {
 	}
 }
 
-func (tc *TcpClient) Write(msg interface{}) {
+func (tc *TcpClient) Write(msg interface{}) (int, error) {
 	encoded := tc.encoder(msg)
 
 	msgLen := make([]byte, 4)
@@ -87,9 +85,20 @@ func (tc *TcpClient) Write(msg interface{}) {
 	buffer.Write(encoded)
 
 	data := buffer.Bytes()
-	_, _ = tc.conn.Write(data)
+	return tc.conn.Write(data)
 }
 
 func (tc *TcpClient) Close() {
 	_ = tc.conn.Close()
+}
+
+func (tc *TcpClient) ReConnect() error {
+	_ = tc.conn.Close()
+	conn, e := net.DialTCP("tcp", nil, tc.conn.RemoteAddr().(*net.TCPAddr))
+	if e != nil {
+		return e
+	}
+	tc.conn = conn
+	tc.Dial()
+	return nil
 }
