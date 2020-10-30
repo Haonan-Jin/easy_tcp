@@ -49,6 +49,7 @@ func (tc *TcpClient) ReConn() {
 	conn, err := net.DialTCP("tcp", tc.localAddr, tc.targetAddr)
 	if err != nil {
 		tc.handler.HandleErr(tc, err)
+		return
 	}
 
 	tc.conn = conn

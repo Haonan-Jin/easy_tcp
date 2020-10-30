@@ -12,7 +12,7 @@ func Decode(data []byte) (interface{}, error) {
 	return string(data), nil
 }
 func Encode(msg interface{}) []byte {
-	return msg.([]byte)
+	return []byte(msg.(string))
 }
 
 type ClientHandler struct {
@@ -24,10 +24,12 @@ func (h *ClientHandler) HandleMsg(ctx ConnectionHandler, msg interface{}) {
 	h.times++
 	fmt.Println(h.times)
 	fmt.Println(msg)
+	ctx.Write("asd")
 }
 
 func (h *ClientHandler) HandleErr(ctx ConnectionHandler, err error) {
-
+	ctx.ReConn()
+	ctx.Write("reconn")
 }
 
 var randomSentences = []string{"Bad days will pass", "Your dream is not dre", "the manner in which someone behaves toward or deals with someone or something.", "是啊是啊", "不是不是"}
@@ -76,15 +78,7 @@ func TestDial(t *testing.T) {
 
 	client.Dial()
 
-	randBytes := make([]byte, 512400)
-	for j := 0; j < 5; j++ {
-		go func() {
-			for i := 0; i < 20000; i++ {
-				rand.Read(randBytes)
-				client.Write(randBytes)
-			}
-		}()
-	}
+	client.Write("asd")
 
 	select {}
 }
