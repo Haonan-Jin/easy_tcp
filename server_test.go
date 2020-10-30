@@ -23,7 +23,7 @@ type StringHandler struct {
 }
 
 // process decoded message
-func (t *StringHandler) Handle(ctx ConnectionHandler, msg interface{}) {
+func (t *StringHandler) HandleMsg(ctx ConnectionHandler, msg interface{}) {
 	t.mutex.Lock()
 	t.times++
 	t.mutex.Unlock()
@@ -31,6 +31,10 @@ func (t *StringHandler) Handle(ctx ConnectionHandler, msg interface{}) {
 	ctx.Write("copy")
 	fmt.Println(t.times)
 	fmt.Println("read from client: ", msg)
+}
+
+func (t *StringHandler) HandleErr(ctx ConnectionHandler, err error) {
+
 }
 
 func TestServer(t *testing.T) {

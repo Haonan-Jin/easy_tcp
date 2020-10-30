@@ -8,11 +8,13 @@ import (
 
 type TcpClient struct {
 	ConnectionHandler
-	decoder Decoder
-	encoder Encoder
-	handler Handler
-	conn    *net.TCPConn
-	buffer  *bytes.Buffer
+	decoder    Decoder
+	encoder    Encoder
+	handler    Handler
+	conn       *net.TCPConn
+	buffer     *bytes.Buffer
+	localAddr  *net.TCPAddr
+	targetAddr *net.TCPAddr
 }
 
 func NewTcpClient(localAddr, targetAddr *net.TCPAddr) (*TcpClient, error) {
@@ -22,6 +24,8 @@ func NewTcpClient(localAddr, targetAddr *net.TCPAddr) (*TcpClient, error) {
 	}
 
 	client := new(TcpClient)
+	client.localAddr = localAddr
+	client.targetAddr = targetAddr
 	client.conn = conn
 	client.buffer = bytes.NewBuffer(nil)
 
@@ -40,12 +44,24 @@ func (tc *TcpClient) AddHandler(handler Handler) {
 	tc.handler = handler
 }
 
+func (tc *TcpClient) ReConn() {
+	_ = tc.conn.Close()
+	conn, err := net.DialTCP("tcp", tc.localAddr, tc.targetAddr)
+	if err != nil {
+		tc.handler.HandleErr(tc, err)
+	}
+
+	tc.conn = conn
+	tc.Dial()
+}
+
 func (tc *TcpClient) Dial() {
 	go func() {
 		buffer := make([]byte, 1024)
 		for {
 			i, e := tc.conn.Read(buffer)
 			if e != nil {
+				tc.handler.HandleErr(tc, e)
 				return
 			}
 
@@ -68,14 +84,15 @@ func (tc *TcpClient) parseReadBytes() {
 		decoded, e := tc.decoder(msg)
 		if e != nil {
 			// failed to decode drop this msg.
+			tc.handler.HandleErr(tc, e)
 			break
 		}
 
-		tc.handler.Handle(tc, decoded)
+		tc.handler.HandleMsg(tc, decoded)
 	}
 }
 
-func (tc *TcpClient) Write(msg interface{}) (int, error) {
+func (tc *TcpClient) Write(msg interface{}) {
 	encoded := tc.encoder(msg)
 
 	msgLen := make([]byte, 4)
@@ -85,20 +102,15 @@ func (tc *TcpClient) Write(msg interface{}) (int, error) {
 	buffer.Write(encoded)
 
 	data := buffer.Bytes()
-	return tc.conn.Write(data)
+
+	_, e := tc.conn.Write(data)
+	if e != nil {
+		tc.handler.HandleErr(tc, e)
+		return
+	}
+
 }
 
 func (tc *TcpClient) Close() {
 	_ = tc.conn.Close()
-}
-
-func (tc *TcpClient) ReConnect() error {
-	_ = tc.conn.Close()
-	conn, e := net.DialTCP("tcp", nil, tc.conn.RemoteAddr().(*net.TCPAddr))
-	if e != nil {
-		return e
-	}
-	tc.conn = conn
-	tc.Dial()
-	return nil
 }

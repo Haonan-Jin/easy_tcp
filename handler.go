@@ -2,10 +2,11 @@ package goland
 
 // A handler to handle decoded message
 type Handler interface {
-	Handle(ctx ConnectionHandler, msg interface{})
+	HandleMsg(ctx ConnectionHandler, msg interface{})
+	HandleErr(ctx ConnectionHandler, err error)
 }
 
 type ConnectionHandler interface {
-	Write(interface{}) (int, error)
+	Write(interface{})
 	Close()
 }

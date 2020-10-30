@@ -12,22 +12,22 @@ func Decode(data []byte) (interface{}, error) {
 	return string(data), nil
 }
 func Encode(msg interface{}) []byte {
-	return []byte(msg.(string))
+	return msg.([]byte)
 }
 
 type ClientHandler struct {
 	times int
 }
 
-func (h *ClientHandler) Handle(ctx ConnectionHandler, msg interface{}) {
+func (h *ClientHandler) HandleMsg(ctx ConnectionHandler, msg interface{}) {
 	//fmt.Println("response from server: ", msg)
 	h.times++
 	fmt.Println(h.times)
 	fmt.Println(msg)
-	if h.times == 1000 {
-		wg.Done()
-		ctx.Close()
-	}
+}
+
+func (h *ClientHandler) HandleErr(ctx ConnectionHandler, err error) {
+
 }
 
 var randomSentences = []string{"Bad days will pass", "Your dream is not dre", "the manner in which someone behaves toward or deals with someone or something.", "是啊是啊", "不是不是"}
@@ -55,13 +55,7 @@ func TestMultiClient(t *testing.T) {
 			client.Dial()
 
 			for j := 0; j < 1000; j++ {
-				_, e := client.Write(randomSentences[rand.Intn(len(randomSentences))])
-				if e != nil {
-					e := client.ReConnect()
-					if e != nil {
-						return
-					}
-				}
+				client.Write(randomSentences[rand.Intn(len(randomSentences))])
 			}
 		}()
 	}
@@ -82,7 +76,15 @@ func TestDial(t *testing.T) {
 
 	client.Dial()
 
-	client.Write("hello")
+	randBytes := make([]byte, 512400)
+	for j := 0; j < 5; j++ {
+		go func() {
+			for i := 0; i < 20000; i++ {
+				rand.Read(randBytes)
+				client.Write(randBytes)
+			}
+		}()
+	}
 
 	select {}
 }

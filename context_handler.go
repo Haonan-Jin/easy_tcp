@@ -91,11 +91,11 @@ func (ch *ContextHandler) parseReadBytes() {
 
 		ch.mutex.Unlock()
 
-		ch.handler.Handle(ch, decoded)
+		ch.handler.HandleMsg(ch, decoded)
 	}
 }
 
-func (ch *ContextHandler) Write(msg interface{}) (int, error) {
+func (ch *ContextHandler) Write(msg interface{}) {
 	encoded := ch.encoder(msg)
 
 	msgLen := make([]byte, 4)
@@ -104,7 +104,7 @@ func (ch *ContextHandler) Write(msg interface{}) (int, error) {
 	buffer := bytes.NewBuffer(msgLen)
 	buffer.Write(encoded)
 
-	return ch.conn.Write(buffer.Bytes())
+	ch.conn.Write(buffer.Bytes())
 }
 
 func (ch *ContextHandler) Close() {
