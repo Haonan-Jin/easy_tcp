@@ -107,6 +107,8 @@ func (ch *ContextHandler) Write(msg interface{}) {
 	ch.conn.Write(buffer.Bytes())
 }
 
+func (ch *ContextHandler) ReConn() {}
+
 func (ch *ContextHandler) Close() {
 	_ = ch.conn.Close()
 }

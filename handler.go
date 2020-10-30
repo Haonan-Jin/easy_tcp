@@ -8,5 +8,6 @@ type Handler interface {
 
 type ConnectionHandler interface {
 	Write(interface{})
+	ReConn()
 	Close()
 }
