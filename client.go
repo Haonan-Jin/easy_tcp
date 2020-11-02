@@ -8,7 +8,7 @@ import (
 )
 
 type TcpClient struct {
-	ConnectionHandler
+	Context
 	decoder    Decoder
 	encoder    Encoder
 	handler    Handler
@@ -21,6 +21,7 @@ type TcpClient struct {
 	closedMutex sync.RWMutex
 }
 
+// If localAddr is nil, a local address is automatically chosen
 func NewTcpClient(localAddr, targetAddr *net.TCPAddr) (*TcpClient, error) {
 	conn, e := net.DialTCP("tcp", localAddr, targetAddr)
 	if e != nil {

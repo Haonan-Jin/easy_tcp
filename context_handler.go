@@ -7,95 +7,74 @@ import (
 	"sync"
 )
 
-type ContextHandler struct {
-	ConnectionHandler
-	mutex sync.Mutex
+type ClientContext struct {
+	Context
 
-	conn net.Conn
+	closedMutex sync.RWMutex
+	closed      bool
 
+	conn    net.Conn
 	buffer  *bytes.Buffer
 	decoder Decoder
-
-	dataChan chan int
-
-	handler Handler
 	encoder Encoder
+	handler Handler
 }
 
 func handleConnection(conn net.Conn, encoder Encoder, decoder Decoder, handler Handler) {
-	contextHandler := new(ContextHandler)
-
-	contextHandler.dataChan = make(chan int, 100)
-	contextHandler.buffer = bytes.NewBuffer(nil)
-	contextHandler.handler = handler
-	contextHandler.conn = conn
-	contextHandler.decoder = decoder
-	contextHandler.encoder = encoder
-
-	contextHandler.start()
-}
-
-func (ch *ContextHandler) start() {
-	terminateChan := make(chan error, 1)
-	go ch.read(terminateChan)
-
-	select {
-	case <-terminateChan:
-		return
+	context := &ClientContext{
+		conn:    conn,
+		buffer:  bytes.NewBuffer(nil),
+		decoder: decoder,
+		encoder: encoder,
+		handler: handler,
 	}
+
+	context.serve()
 }
 
-func (ch *ContextHandler) read(terminateChan chan<- error) {
+func (ch *ClientContext) serve() {
+	go func() {
+		buffer := make([]byte, 1024)
+		for {
+			n, err := ch.conn.Read(buffer)
+			if err != nil {
+				if ch.isOpen() {
+					ch.handler.HandleErr(ch, err)
+				}
+				return
+			}
 
-	buffer := make([]byte, 1024)
-
-	for {
-
-		n, err := ch.conn.Read(buffer)
-		if err != nil {
-			_ = ch.conn.Close()
-			terminateChan <- err
-			return
+			// read bytes to buffer only
+			ch.buffer.Write(buffer[:n])
+			ch.parseReadBytes()
 		}
-
-		// read bytes to buffer only
-
-		ch.mutex.Lock()
-		ch.buffer.Write(buffer[:n])
-		ch.mutex.Unlock()
-
-		ch.parseReadBytes()
-	}
-
+	}()
 }
 
-func (ch *ContextHandler) parseReadBytes() {
+func (ch *ClientContext) parseReadBytes() {
 	for {
-		ch.mutex.Lock()
 		msg, e := LengthFixedUnpack(ch.buffer)
-
 		if e != nil {
 			if msg != nil {
 				ch.buffer = bytes.NewBuffer(msg)
 			}
-			ch.mutex.Unlock()
 			break
 		}
 
 		decoded, e := ch.decoder(msg)
 		if e != nil {
 			// failed to decode drop this msg.
-			ch.mutex.Unlock()
+			if ch.isOpen() {
+				ch.handler.HandleErr(ch, e)
+			}
 			break
 		}
-
-		ch.mutex.Unlock()
 
 		ch.handler.HandleMsg(ch, decoded)
 	}
 }
 
-func (ch *ContextHandler) Write(msg interface{}) {
+func (ch *ClientContext) Write(msg interface{}) {
 	encoded := ch.encoder(msg)
 
 	msgLen := make([]byte, 4)
@@ -107,8 +86,17 @@ func (ch *ContextHandler) Write(msg interface{}) {
 	ch.conn.Write(buffer.Bytes())
 }
 
-func (ch *ContextHandler) ReConn() { return }
+func (ch *ClientContext) isOpen() bool {
+	ch.closedMutex.RLock()
+	defer ch.closedMutex.RUnlock()
+	return !ch.closed
+}
 
-func (ch *ContextHandler) Close() {
+func (ch *ClientContext) ReConn() { return }
+
+func (ch *ClientContext) Close() {
+	ch.closedMutex.Lock()
+	ch.closed = true
 	_ = ch.conn.Close()
+	ch.closedMutex.Unlock()
 }

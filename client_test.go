@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
-	"sync"
 	"testing"
 )
 
@@ -19,7 +18,7 @@ type ClientHandler struct {
 	times int
 }
 
-func (h *ClientHandler) HandleMsg(ctx ConnectionHandler, msg interface{}) {
+func (h *ClientHandler) HandleMsg(ctx Context, msg interface{}) {
 	//fmt.Println("response from server: ", msg)
 	h.times++
 	fmt.Println(h.times)
@@ -27,7 +26,7 @@ func (h *ClientHandler) HandleMsg(ctx ConnectionHandler, msg interface{}) {
 	ctx.Write("asd")
 }
 
-func (h *ClientHandler) HandleErr(ctx ConnectionHandler, err error) {
+func (h *ClientHandler) HandleErr(ctx Context, err error) {
 	ctx.ReConn()
 	ctx.Write("reconn")
 	ctx.Close()
@@ -39,11 +38,8 @@ var serverAddr = net.TCPAddr{
 	Port: 3333,
 }
 
-var wg = sync.WaitGroup{}
-
 func TestMultiClient(t *testing.T) {
 	maxClient := 1000
-	wg.Add(maxClient)
 
 	for i := 0; i < maxClient; i++ {
 		go func() {
@@ -62,8 +58,6 @@ func TestMultiClient(t *testing.T) {
 			}
 		}()
 	}
-
-	wg.Wait()
 }
 
 func TestDial(t *testing.T) {

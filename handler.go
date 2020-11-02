@@ -4,14 +4,14 @@ package goland
 type Handler interface {
 	// Implementation will be called when get a request or response.
 	// Msg's type depend on func Decoder's return type.
-	HandleMsg(ctx ConnectionHandler, msg interface{})
+	HandleMsg(ctx Context, msg interface{})
 
 	// Implementation will be called when an error occurred.
 	// Handle errors in the implementation.
-	HandleErr(ctx ConnectionHandler, err error)
+	HandleErr(ctx Context, err error)
 }
 
-type ConnectionHandler interface {
+type Context interface {
 	Write(interface{})
 	ReConn()
 	Close()

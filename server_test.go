@@ -2,6 +2,7 @@ package goland
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"sync"
 	"testing"
@@ -23,7 +24,7 @@ type StringHandler struct {
 }
 
 // process decoded message
-func (t *StringHandler) HandleMsg(ctx ConnectionHandler, msg interface{}) {
+func (t *StringHandler) HandleMsg(ctx Context, msg interface{}) {
 	t.mutex.Lock()
 	t.times++
 	t.mutex.Unlock()
@@ -33,8 +34,9 @@ func (t *StringHandler) HandleMsg(ctx ConnectionHandler, msg interface{}) {
 	fmt.Println("read from client: ", msg)
 }
 
-func (t *StringHandler) HandleErr(ctx ConnectionHandler, err error) {
-
+func (t *StringHandler) HandleErr(ctx Context, err error) {
+	log.Println("a connect close, because: ", err)
+	ctx.Close()
 }
 
 func TestServer(t *testing.T) {
