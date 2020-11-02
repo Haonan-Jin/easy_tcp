@@ -2,6 +2,7 @@ package goland
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"net"
 	"testing"
@@ -19,14 +20,13 @@ type ClientHandler struct {
 }
 
 func (h *ClientHandler) HandleMsg(ctx Context, msg interface{}) {
-	//fmt.Println("response from server: ", msg)
 	h.times++
-	fmt.Println(h.times)
 	fmt.Println(msg)
 	ctx.Write("asd")
 }
 
 func (h *ClientHandler) HandleErr(ctx Context, err error) {
+	log.Println("disconnected to server, error: ", err)
 	ctx.ReConn()
 	ctx.Write("reconn")
 	ctx.Close()

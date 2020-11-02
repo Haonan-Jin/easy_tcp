@@ -35,7 +35,7 @@ func (t *StringHandler) HandleMsg(ctx Context, msg interface{}) {
 }
 
 func (t *StringHandler) HandleErr(ctx Context, err error) {
-	log.Println("a connect close, because: ", err)
+	log.Println("a connect closed, error: ", err)
 	ctx.Close()
 }
 
