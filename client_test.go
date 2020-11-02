@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/rand"
 	"net"
+	"sync"
 	"testing"
 )
 
@@ -16,11 +17,14 @@ func Encode(msg interface{}) []byte {
 }
 
 type ClientHandler struct {
+	mutex sync.Mutex
 	times int
 }
 
 func (h *ClientHandler) HandleMsg(ctx Context, msg interface{}) {
+	h.mutex.Lock()
 	h.times++
+	h.mutex.Unlock()
 	fmt.Println(msg)
 	ctx.Write("asd")
 }
