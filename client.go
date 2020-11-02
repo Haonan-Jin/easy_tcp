@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"net"
+	"sync"
 )
 
 type TcpClient struct {
@@ -15,6 +16,9 @@ type TcpClient struct {
 	buffer     *bytes.Buffer
 	localAddr  *net.TCPAddr
 	targetAddr *net.TCPAddr
+
+	closed      bool
+	closedMutex sync.RWMutex
 }
 
 func NewTcpClient(localAddr, targetAddr *net.TCPAddr) (*TcpClient, error) {
@@ -62,7 +66,9 @@ func (tc *TcpClient) Dial() {
 		for {
 			i, e := tc.conn.Read(buffer)
 			if e != nil {
-				tc.handler.HandleErr(tc, e)
+				if tc.isOpen() {
+					tc.handler.HandleErr(tc, e)
+				}
 				return
 			}
 
@@ -85,7 +91,9 @@ func (tc *TcpClient) parseReadBytes() {
 		decoded, e := tc.decoder(msg)
 		if e != nil {
 			// failed to decode drop this msg.
-			tc.handler.HandleErr(tc, e)
+			if tc.isOpen() {
+				tc.handler.HandleErr(tc, e)
+			}
 			break
 		}
 
@@ -106,12 +114,23 @@ func (tc *TcpClient) Write(msg interface{}) {
 
 	_, e := tc.conn.Write(data)
 	if e != nil {
-		tc.handler.HandleErr(tc, e)
+		if tc.isOpen() {
+			tc.handler.HandleErr(tc, e)
+		}
 		return
 	}
 
 }
 
+func (tc *TcpClient) isOpen() bool {
+	tc.closedMutex.RLock()
+	defer tc.closedMutex.RUnlock()
+	return !tc.closed
+}
+
 func (tc *TcpClient) Close() {
+	tc.closedMutex.Lock()
+	tc.closed = true
 	_ = tc.conn.Close()
+	tc.closedMutex.Unlock()
 }

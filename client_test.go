@@ -30,6 +30,7 @@ func (h *ClientHandler) HandleMsg(ctx ConnectionHandler, msg interface{}) {
 func (h *ClientHandler) HandleErr(ctx ConnectionHandler, err error) {
 	ctx.ReConn()
 	ctx.Write("reconn")
+	ctx.Close()
 }
 
 var randomSentences = []string{"Bad days will pass", "Your dream is not dre", "the manner in which someone behaves toward or deals with someone or something.", "是啊是啊", "不是不是"}
