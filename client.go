@@ -3,6 +3,8 @@ package goland
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
+	"io"
 	"net"
 	"sync"
 )
@@ -68,6 +70,10 @@ func (tc *TcpClient) Dial() {
 		for {
 			i, e := tc.conn.Read(buffer)
 			if e != nil {
+				if errors.Is(e, io.EOF) {
+					tc.handler.HandleMsg(tc, buffer)
+					continue
+				}
 				if tc.isOpen() {
 					tc.handler.HandleErr(tc, e)
 				}
