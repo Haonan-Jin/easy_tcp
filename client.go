@@ -61,6 +61,7 @@ func (tc *TcpClient) ReConn() error {
 
 	tc.conn = conn
 	tc.Dial()
+	tc.closed = false
 	return nil
 }
 
