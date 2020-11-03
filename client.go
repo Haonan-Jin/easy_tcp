@@ -71,6 +71,7 @@ func (tc *TcpClient) Dial() {
 			i, e := tc.conn.Read(buffer)
 			if e != nil {
 				if errors.Is(e, io.EOF) {
+					tc.cleanBuffer()
 					tc.buffer.Write(buffer)
 					tc.parseReadBytes()
 					continue
@@ -85,6 +86,10 @@ func (tc *TcpClient) Dial() {
 			tc.parseReadBytes()
 		}
 	}()
+}
+
+func (tc *TcpClient) cleanBuffer() {
+	tc.buffer = bytes.NewBuffer(nil)
 }
 
 func (tc *TcpClient) parseReadBytes() {
