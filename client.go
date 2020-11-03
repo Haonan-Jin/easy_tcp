@@ -51,6 +51,7 @@ func (tc *TcpClient) AddHandler(handler Handler) {
 	tc.handler = handler
 }
 
+// Reconnect and reset buffer has read.
 func (tc *TcpClient) ReConn() error {
 	_ = tc.conn.Close()
 	conn, err := net.DialTCP("tcp", tc.localAddr, tc.targetAddr)
@@ -66,6 +67,7 @@ func (tc *TcpClient) ReConn() error {
 	return nil
 }
 
+// Start reading and processing data from connection
 func (tc *TcpClient) Dial() {
 	go func() {
 		buffer := make([]byte, 1024)
@@ -89,6 +91,7 @@ func (tc *TcpClient) Dial() {
 	}()
 }
 
+// Try to decode read bytes to type that decoder designed.
 func (tc *TcpClient) parseReadBytes() {
 	for {
 		msg, e := LengthFixedUnpack(tc.buffer)
@@ -112,6 +115,7 @@ func (tc *TcpClient) parseReadBytes() {
 	}
 }
 
+// Write encode msg to specified protocol bytes that encoder designed
 func (tc *TcpClient) Write(msg interface{}) {
 	encoded := tc.encoder(msg)
 
