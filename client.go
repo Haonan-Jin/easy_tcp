@@ -49,16 +49,17 @@ func (tc *TcpClient) AddHandler(handler Handler) {
 	tc.handler = handler
 }
 
-func (tc *TcpClient) ReConn() {
+func (tc *TcpClient) ReConn() error {
 	_ = tc.conn.Close()
 	conn, err := net.DialTCP("tcp", tc.localAddr, tc.targetAddr)
 	if err != nil {
 		tc.handler.HandleErr(tc, err)
-		return
+		return err
 	}
 
 	tc.conn = conn
 	tc.Dial()
+	return nil
 }
 
 func (tc *TcpClient) Dial() {

@@ -92,7 +92,7 @@ func (ch *ClientContext) isOpen() bool {
 	return !ch.closed
 }
 
-func (ch *ClientContext) ReConn() { return }
+func (ch *ClientContext) ReConn() error { return nil }
 
 func (ch *ClientContext) Close() {
 	ch.closedMutex.Lock()

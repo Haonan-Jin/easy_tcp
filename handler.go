@@ -13,6 +13,6 @@ type Handler interface {
 
 type Context interface {
 	Write(interface{})
-	ReConn()
+	ReConn() error
 	Close()
 }

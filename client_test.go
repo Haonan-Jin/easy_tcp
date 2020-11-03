@@ -31,7 +31,10 @@ func (h *ClientHandler) HandleMsg(ctx Context, msg interface{}) {
 
 func (h *ClientHandler) HandleErr(ctx Context, err error) {
 	log.Println("disconnected to server, error: ", err)
-	ctx.ReConn()
+	err = ctx.ReConn()
+	if err != nil {
+		return
+	}
 	ctx.Write("reconn")
 	ctx.Close()
 }
