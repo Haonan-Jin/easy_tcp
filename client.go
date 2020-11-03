@@ -62,6 +62,7 @@ func (tc *TcpClient) ReConn() error {
 	tc.conn = conn
 	tc.Dial()
 	tc.closed = false
+	tc.buffer.Reset()
 	return nil
 }
 
@@ -72,7 +73,6 @@ func (tc *TcpClient) Dial() {
 			i, e := tc.conn.Read(buffer)
 			if e != nil {
 				if errors.Is(e, io.EOF) {
-					tc.buffer.Reset()
 					tc.buffer.Write(buffer)
 					tc.parseReadBytes()
 					continue
