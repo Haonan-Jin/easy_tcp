@@ -32,11 +32,7 @@ func (h *ClientHandler) HandleMsg(ctx Context, msg interface{}) {
 func (h *ClientHandler) HandleErr(ctx Context, err error) {
 	log.Println("disconnected to server, error: ", err)
 	err = ctx.ReConn()
-	if err != nil {
-		return
-	}
 	ctx.Write("reconn")
-	ctx.Close()
 }
 
 var randomSentences = []string{"Bad days will pass", "Your dream is not dre", "the manner in which someone behaves toward or deals with someone or something.", "是啊是啊", "不是不是"}
@@ -52,7 +48,7 @@ func TestMultiClient(t *testing.T) {
 		go func() {
 			client, e := NewTcpClient(nil, &serverAddr)
 			if e != nil {
-				panic(e)
+				return
 			}
 
 			client.AddEncoder(Encode)
@@ -65,6 +61,8 @@ func TestMultiClient(t *testing.T) {
 			}
 		}()
 	}
+
+	select {}
 }
 
 func TestDial(t *testing.T) {

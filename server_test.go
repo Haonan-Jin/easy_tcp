@@ -29,6 +29,7 @@ func (t *StringHandler) HandleMsg(ctx Context, msg interface{}) {
 	t.mutex.Lock()
 	t.times++
 	t.mutex.Unlock()
+	ctx.Write("reconn")
 }
 
 func (t *StringHandler) HandleErr(ctx Context, err error) {

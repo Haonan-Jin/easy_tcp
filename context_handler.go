@@ -22,10 +22,11 @@ type ClientContext struct {
 }
 
 func NewConnectionHandler(conn net.Conn) *ClientContext {
-	return &ClientContext{
-		conn:   conn,
-		buffer: bytes.NewBuffer(nil),
-	}
+	context := new(ClientContext)
+	context.conn = conn
+	context.buffer = bytes.NewBuffer(nil)
+	context.DefaultUnPacker()
+	return context
 }
 
 func (ch *ClientContext) DefaultUnPacker() {
@@ -79,14 +80,14 @@ func (ch *ClientContext) parseReadBytes() {
 
 		decoded, e := ch.decoder(msg)
 		if e != nil {
-			// failed to decode drop this msg.
+			// failed to decode, drop this msg.
 			if ch.isOpen() {
 				ch.handler.HandleErr(ch, e)
 			}
 			break
 		}
 
-		ch.handler.HandleMsg(ch, decoded)
+		go ch.handler.HandleMsg(ch, decoded)
 	}
 }
 
