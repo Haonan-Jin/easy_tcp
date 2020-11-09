@@ -10,6 +10,7 @@ import (
 
 // decode your data in this func
 func StringDecoder(b []byte) (interface{}, error) {
+	fmt.Println(string(b))
 	return string(b), nil
 }
 
@@ -28,10 +29,6 @@ func (t *StringHandler) HandleMsg(ctx Context, msg interface{}) {
 	t.mutex.Lock()
 	t.times++
 	t.mutex.Unlock()
-
-	ctx.Write("copy")
-	fmt.Println(t.times)
-	fmt.Println("read from client: ", msg)
 }
 
 func (t *StringHandler) HandleErr(ctx Context, err error) {
@@ -40,18 +37,20 @@ func (t *StringHandler) HandleErr(ctx Context, err error) {
 }
 
 func TestServer(t *testing.T) {
-	addr := net.TCPAddr{
-		IP:   net.ParseIP("0.0.0.0"),
-		Port: 3333,
-	}
-
-	tcpServer, e := NewTcpServer(&addr)
+	listener, e := net.Listen("tcp", ":3333")
 	if e != nil {
 		panic(e)
 	}
 
-	tcpServer.AddEncoder(StringEncoder)
-	tcpServer.AddDecoder(StringDecoder)
-	tcpServer.AddHandler(new(StringHandler))
-	tcpServer.Start()
+	for {
+		conn, e := listener.Accept()
+		if e != nil {
+			continue
+		}
+		handler := NewConnectionHandler(conn)
+		handler.AddEncoder(StringEncoder)
+		handler.AddDecoder(StringDecoder)
+		handler.AddHandler(new(StringHandler))
+		handler.Serve()
+	}
 }

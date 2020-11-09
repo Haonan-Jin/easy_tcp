@@ -8,6 +8,11 @@ import (
 
 var ReadLengthError = errors.New("not read completely")
 
+// Define a packer that try to solve bytes have read.
+// Always return your service or unsolved bytes.
+// Return an error such as ReadLengthError when you are returning unsolved bytes.
+type UnPacker func(b *bytes.Buffer) ([]byte, error)
+
 // Try to unpack read bytes.
 // Returned bytes without header bytes.
 // The message that be sent to server must be encoded like:

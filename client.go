@@ -13,6 +13,7 @@ type TcpClient struct {
 	Context
 	decoder    Decoder
 	encoder    Encoder
+	packer     UnPacker
 	handler    Handler
 	conn       *net.TCPConn
 	buffer     *bytes.Buffer
@@ -35,8 +36,17 @@ func NewTcpClient(localAddr, targetAddr *net.TCPAddr) (*TcpClient, error) {
 	client.targetAddr = targetAddr
 	client.conn = conn
 	client.buffer = bytes.NewBuffer(nil)
+	client.DefaultUnPacker()
 
 	return client, nil
+}
+
+func (tc *TcpClient) DefaultUnPacker() {
+	tc.packer = LengthFixedUnpack
+}
+
+func (tc *TcpClient) AddUnPacker(packer UnPacker) {
+	tc.packer = packer
 }
 
 func (tc *TcpClient) AddDecoder(decoder Decoder) {
@@ -94,7 +104,7 @@ func (tc *TcpClient) Dial() {
 // Try to decode read bytes to type that decoder designed.
 func (tc *TcpClient) parseReadBytes() {
 	for {
-		msg, e := LengthFixedUnpack(tc.buffer)
+		msg, e := tc.packer(tc.buffer)
 		if e != nil {
 			if msg != nil {
 				tc.buffer = bytes.NewBuffer(msg)

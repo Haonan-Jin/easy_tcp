@@ -18,21 +18,37 @@ type ClientContext struct {
 	decoder Decoder
 	encoder Encoder
 	handler Handler
+	packer  UnPacker
 }
 
-func handleConnection(conn net.Conn, encoder Encoder, decoder Decoder, handler Handler) {
-	context := &ClientContext{
-		conn:    conn,
-		buffer:  bytes.NewBuffer(nil),
-		decoder: decoder,
-		encoder: encoder,
-		handler: handler,
+func NewConnectionHandler(conn net.Conn) *ClientContext {
+	return &ClientContext{
+		conn:   conn,
+		buffer: bytes.NewBuffer(nil),
 	}
-
-	context.serve()
 }
 
-func (ch *ClientContext) serve() {
+func (ch *ClientContext) DefaultUnPacker() {
+	ch.packer = LengthFixedUnpack
+}
+
+func (ch *ClientContext) AddUnPacker(packer UnPacker) {
+	ch.packer = packer
+}
+
+func (ch *ClientContext) AddDecoder(decoder Decoder) {
+	ch.decoder = decoder
+}
+
+func (ch *ClientContext) AddEncoder(encoder Encoder) {
+	ch.encoder = encoder
+}
+
+func (ch *ClientContext) AddHandler(handler Handler) {
+	ch.handler = handler
+}
+
+func (ch *ClientContext) Serve() {
 	go func() {
 		buffer := make([]byte, 1024)
 		for {
@@ -53,7 +69,7 @@ func (ch *ClientContext) serve() {
 
 func (ch *ClientContext) parseReadBytes() {
 	for {
-		msg, e := LengthFixedUnpack(ch.buffer)
+		msg, e := ch.packer(ch.buffer)
 		if e != nil {
 			if msg != nil {
 				ch.buffer = bytes.NewBuffer(msg)
