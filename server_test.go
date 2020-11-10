@@ -93,15 +93,3 @@ func HttpUnPacker(buffer *bytes.Buffer) ([]byte, error) {
 	buffer.Read(i)
 	return i, nil
 }
-
-func TestHttpServer(t *testing.T) {
-	listener, _ := net.Listen("tcp", ":522")
-	conn, _ := listener.Accept()
-	i := make([]byte, 1024)
-	conn.Read(i)
-	fmt.Println(string(i))
-	conn.Write([]byte("HTTP/1.1 200 OK\n" +
-		"Content-Type: application/json;charset=utf-8\n\r\n"))
-	conn.Close()
-	select {}
-}
