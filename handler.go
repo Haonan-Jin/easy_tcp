@@ -1,6 +1,6 @@
 package goland
 
-// A handler to handle decoded message
+// A handle to handle decoded message
 type Handler interface {
 	// Implementation will be called when get a request or response.
 	// Msg's type depend on func Decoder's return type.

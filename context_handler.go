@@ -12,12 +12,13 @@ type ClientContext struct {
 	closedMutex sync.RWMutex
 	closed      bool
 
-	conn    net.Conn
-	buffer  *bytes.Buffer
-	decoder Decoder
-	encoder Encoder
-	handler Handler
-	packer  UnPacker
+	conn   net.Conn
+	buffer *bytes.Buffer
+
+	decode Decoder
+	encode Encoder
+	handle Handler
+	unPack UnPacker
 }
 
 func NewConnectionHandler(conn net.Conn) *ClientContext {
@@ -29,23 +30,23 @@ func NewConnectionHandler(conn net.Conn) *ClientContext {
 }
 
 func (ch *ClientContext) DefaultUnPacker() {
-	ch.packer = LengthFixedUnpack
+	ch.unPack = LengthFixedUnpack
 }
 
 func (ch *ClientContext) AddUnPacker(packer UnPacker) {
-	ch.packer = packer
+	ch.unPack = packer
 }
 
 func (ch *ClientContext) AddDecoder(decoder Decoder) {
-	ch.decoder = decoder
+	ch.decode = decoder
 }
 
 func (ch *ClientContext) AddEncoder(encoder Encoder) {
-	ch.encoder = encoder
+	ch.encode = encoder
 }
 
 func (ch *ClientContext) AddHandler(handler Handler) {
-	ch.handler = handler
+	ch.handle = handler
 }
 
 func (ch *ClientContext) Serve() {
@@ -55,7 +56,7 @@ func (ch *ClientContext) Serve() {
 			n, err := ch.conn.Read(buffer)
 			if err != nil {
 				if ch.isOpen() {
-					ch.handler.HandleErr(ch, err)
+					ch.handle.HandleErr(ch, err)
 				}
 				return
 			}
@@ -69,7 +70,7 @@ func (ch *ClientContext) Serve() {
 
 func (ch *ClientContext) parseReadBytes() {
 	for {
-		msg, e := ch.packer(ch.buffer)
+		msg, e := ch.unPack(ch.buffer)
 		if e != nil {
 			if msg != nil {
 				ch.buffer = bytes.NewBuffer(msg)
@@ -77,22 +78,22 @@ func (ch *ClientContext) parseReadBytes() {
 			break
 		}
 
-		decoded, e := ch.decoder(msg)
+		decoded, e := ch.decode(msg)
 		if e != nil {
 			// failed to decode, drop this msg.
 			if ch.isOpen() {
-				ch.handler.HandleErr(ch, e)
+				ch.handle.HandleErr(ch, e)
 			}
 			break
 		}
 
-		go ch.handler.HandleMsg(ch, decoded)
+		go ch.handle.HandleMsg(ch, decoded)
 	}
 }
 
 func (ch *ClientContext) Write(msg interface{}) {
-	encoded := ch.encoder(msg)
-	ch.conn.Write(encoded)
+	encoded := ch.encode(msg)
+	_, _ = ch.conn.Write(encoded)
 }
 
 func (ch *ClientContext) isOpen() bool {

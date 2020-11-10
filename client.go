@@ -10,17 +10,20 @@ import (
 
 type TcpClient struct {
 	Context
-	decoder    Decoder
-	encoder    Encoder
-	packer     UnPacker
-	handler    Handler
-	conn       *net.TCPConn
-	buffer     *bytes.Buffer
-	localAddr  *net.TCPAddr
-	targetAddr *net.TCPAddr
 
 	closed      bool
 	closedMutex sync.RWMutex
+
+	conn   *net.TCPConn
+	buffer *bytes.Buffer
+
+	localAddr  *net.TCPAddr
+	targetAddr *net.TCPAddr
+
+	decode Decoder
+	encode Encoder
+	unPack UnPacker
+	handle Handler
 }
 
 // If localAddr is nil, a local address is automatically chosen
@@ -41,23 +44,23 @@ func NewTcpClient(localAddr, targetAddr *net.TCPAddr) (*TcpClient, error) {
 }
 
 func (tc *TcpClient) DefaultUnPacker() {
-	tc.packer = LengthFixedUnpack
+	tc.unPack = LengthFixedUnpack
 }
 
 func (tc *TcpClient) AddUnPacker(packer UnPacker) {
-	tc.packer = packer
+	tc.unPack = packer
 }
 
 func (tc *TcpClient) AddDecoder(decoder Decoder) {
-	tc.decoder = decoder
+	tc.decode = decoder
 }
 
 func (tc *TcpClient) AddEncoder(encoder Encoder) {
-	tc.encoder = encoder
+	tc.encode = encoder
 }
 
 func (tc *TcpClient) AddHandler(handler Handler) {
-	tc.handler = handler
+	tc.handle = handler
 }
 
 // Reconnect and reset buffer has read.
@@ -65,7 +68,7 @@ func (tc *TcpClient) ReConn() error {
 	_ = tc.conn.Close()
 	conn, err := net.DialTCP("tcp", tc.localAddr, tc.targetAddr)
 	if err != nil {
-		tc.handler.HandleErr(tc, err)
+		tc.handle.HandleErr(tc, err)
 		return err
 	}
 
@@ -89,7 +92,7 @@ func (tc *TcpClient) Dial() {
 					continue
 				}
 				if tc.isOpen() {
-					tc.handler.HandleErr(tc, e)
+					tc.handle.HandleErr(tc, e)
 				}
 				return
 			}
@@ -100,10 +103,10 @@ func (tc *TcpClient) Dial() {
 	}()
 }
 
-// Try to decode read bytes to type that decoder designed.
+// Try to decode read bytes to type that decode designed.
 func (tc *TcpClient) parseReadBytes() {
 	for {
-		msg, e := tc.packer(tc.buffer)
+		msg, e := tc.unPack(tc.buffer)
 		if e != nil {
 			if msg != nil {
 				tc.buffer = bytes.NewBuffer(msg)
@@ -111,27 +114,27 @@ func (tc *TcpClient) parseReadBytes() {
 			break
 		}
 
-		decoded, e := tc.decoder(msg)
+		decoded, e := tc.decode(msg)
 		if e != nil {
 			// failed to decode drop this msg.
 			if tc.isOpen() {
-				tc.handler.HandleErr(tc, e)
+				tc.handle.HandleErr(tc, e)
 			}
 			break
 		}
 
-		tc.handler.HandleMsg(tc, decoded)
+		tc.handle.HandleMsg(tc, decoded)
 	}
 }
 
-// Write encode msg to specified protocol bytes that encoder designed
+// Write encode msg to specified protocol bytes that encode designed
 func (tc *TcpClient) Write(msg interface{}) {
-	encoded := tc.encoder(msg)
+	encoded := tc.encode(msg)
 
 	_, e := tc.conn.Write(encoded)
 	if e != nil {
 		if tc.isOpen() {
-			tc.handler.HandleErr(tc, e)
+			tc.handle.HandleErr(tc, e)
 		}
 		return
 	}
