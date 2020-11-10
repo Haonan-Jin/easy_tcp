@@ -1,6 +1,8 @@
 package goland
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"log"
 	"math/rand"
@@ -13,7 +15,13 @@ func Decode(data []byte) (interface{}, error) {
 	return string(data), nil
 }
 func Encode(msg interface{}) []byte {
-	return []byte(msg.(string))
+	msgBody := []byte(msg.(string))
+	msgLen := make([]byte, 4)
+	binary.BigEndian.PutUint32(msgLen, uint32(len(msgBody)))
+	buffer := bytes.NewBuffer(msgLen)
+	buffer.Write(msgBody)
+
+	return buffer.Bytes()
 }
 
 type ClientHandler struct {

@@ -2,7 +2,6 @@ package goland
 
 import (
 	"bytes"
-	"encoding/binary"
 	"errors"
 	"io"
 	"net"
@@ -129,15 +128,7 @@ func (tc *TcpClient) parseReadBytes() {
 func (tc *TcpClient) Write(msg interface{}) {
 	encoded := tc.encoder(msg)
 
-	msgLen := make([]byte, 4)
-	binary.BigEndian.PutUint32(msgLen, uint32(len(encoded)))
-
-	buffer := bytes.NewBuffer(msgLen)
-	buffer.Write(encoded)
-
-	data := buffer.Bytes()
-
-	_, e := tc.conn.Write(data)
+	_, e := tc.conn.Write(encoded)
 	if e != nil {
 		if tc.isOpen() {
 			tc.handler.HandleErr(tc, e)

@@ -1,6 +1,8 @@
 package goland
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"log"
 	"net"
@@ -16,7 +18,33 @@ func StringDecoder(b []byte) (interface{}, error) {
 
 // encode your data in this func
 func StringEncoder(msg interface{}) []byte {
+	msgBody := []byte(msg.(string))
+	msgLen := make([]byte, 4)
+	binary.BigEndian.PutUint32(msgLen, uint32(len(msgBody)))
+	buffer := bytes.NewBuffer(msgLen)
+	buffer.Write(msgBody)
+
+	return buffer.Bytes()
+}
+
+func HttpEncoder(msg interface{}) []byte {
 	return []byte(msg.(string))
+}
+
+type HttpHandler struct {
+}
+
+func (http *HttpHandler) HandleMsg(ctx Context, msg interface{}) {
+	response := "HTTP/1.1 200 OK\n" +
+		"Date: Tue, 10 Nov 2020 03:22:58 GMT\n" +
+		"\n"
+	ctx.Write(response)
+	fmt.Println("write end")
+	ctx.Close()
+}
+
+func (http *HttpHandler) HandleErr(ctx Context, err error) {
+	log.Println("a connect closed, error: ", err)
 }
 
 type StringHandler struct {
@@ -49,9 +77,31 @@ func TestServer(t *testing.T) {
 			continue
 		}
 		handler := NewConnectionHandler(conn)
-		handler.AddEncoder(StringEncoder)
+		handler.AddEncoder(HttpEncoder)
 		handler.AddDecoder(StringDecoder)
-		handler.AddHandler(new(StringHandler))
+		handler.AddHandler(new(HttpHandler))
+		handler.AddUnPacker(HttpUnPacker)
 		handler.Serve()
 	}
+}
+
+func HttpUnPacker(buffer *bytes.Buffer) ([]byte, error) {
+	if buffer.Len() == 0 {
+		return nil, ReadLengthError
+	}
+	i := make([]byte, 1024)
+	buffer.Read(i)
+	return i, nil
+}
+
+func TestHttpServer(t *testing.T) {
+	listener, _ := net.Listen("tcp", ":522")
+	conn, _ := listener.Accept()
+	i := make([]byte, 1024)
+	conn.Read(i)
+	fmt.Println(string(i))
+	conn.Write([]byte("HTTP/1.1 200 OK\n" +
+		"Content-Type: application/json;charset=utf-8\n\r\n"))
+	conn.Close()
+	select {}
 }

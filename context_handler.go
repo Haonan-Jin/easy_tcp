@@ -2,7 +2,6 @@ package goland
 
 import (
 	"bytes"
-	"encoding/binary"
 	"net"
 	"sync"
 )
@@ -93,14 +92,7 @@ func (ch *ClientContext) parseReadBytes() {
 
 func (ch *ClientContext) Write(msg interface{}) {
 	encoded := ch.encoder(msg)
-
-	msgLen := make([]byte, 4)
-	binary.BigEndian.PutUint32(msgLen, uint32(len(encoded)))
-
-	buffer := bytes.NewBuffer(msgLen)
-	buffer.Write(encoded)
-
-	ch.conn.Write(buffer.Bytes())
+	ch.conn.Write(encoded)
 }
 
 func (ch *ClientContext) isOpen() bool {
